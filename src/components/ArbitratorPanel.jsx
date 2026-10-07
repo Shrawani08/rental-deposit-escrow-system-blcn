@@ -11,20 +11,22 @@ export default function ArbitratorPanel({ agreement }) {
     ((depositNum - parseFloat(agreement.claimAmount || "0")) + (depositNum - parseFloat(agreement.counterAmount || "0"))) / 2
   );
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const landlordPayout = (depositNum - tenantPayout).toFixed(4);
 
   const handleResolve = async () => {
     if (parseFloat(tenantPayout) + parseFloat(landlordPayout) !== depositNum) {
-      alert("Sum of Tenant Payout and Landlord Payout must equal total deposit!");
+      setError('Sum of tenant and landlord payouts must equal the total deposit.');
       return;
     }
 
     setLoading(true);
+    setError('');
     try {
       await resolveDispute(agreement.id, tenantPayout, landlordPayout);
     } catch (err) {
-      console.error(err);
+      setError(err.message || 'Dispute resolution failed.');
     } finally {
       setLoading(false);
     }
@@ -52,6 +54,7 @@ export default function ArbitratorPanel({ agreement }) {
       </div>
 
       {/* Claims vs Counter Box */}
+      {error && <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs">{error}</div>}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         
         {/* Landlord Demand */}

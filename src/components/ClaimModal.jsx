@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useWeb3 } from '../context/Web3Context';
-import { X, AlertTriangle, ShieldAlert, CheckCircle2, Coins, CornerDownRight } from 'lucide-react';
+import { X, AlertTriangle, ShieldAlert, CheckCircle2, Coins, CornerDownRight, AlertCircle } from 'lucide-react';
 
 export default function ClaimModal({ isOpen, onClose, agreement, role }) {
   const { submitDamageClaim, acceptDamageClaim, rejectDamageClaim, acceptCounterOffer } = useWeb3();
@@ -10,17 +10,19 @@ export default function ClaimModal({ isOpen, onClose, agreement, role }) {
   const [counterReason, setCounterReason] = useState('Damage existed prior to move-in. Counter-offering 0.10 ETH maximum.');
   const [isCountering, setIsCountering] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   if (!isOpen || !agreement) return null;
 
   const handleLandlordSubmitClaim = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setError('');
     try {
       await submitDamageClaim(agreement.id, claimAmount, claimReason);
       onClose();
     } catch (err) {
-      console.error(err);
+      setError(err.message || 'Unable to submit the damage claim.');
     } finally {
       setLoading(false);
     }
@@ -28,11 +30,12 @@ export default function ClaimModal({ isOpen, onClose, agreement, role }) {
 
   const handleTenantAccept = async () => {
     setLoading(true);
+    setError('');
     try {
       await acceptDamageClaim(agreement.id);
       onClose();
     } catch (err) {
-      console.error(err);
+      setError(err.message || 'Unable to accept the claim.');
     } finally {
       setLoading(false);
     }
@@ -41,11 +44,12 @@ export default function ClaimModal({ isOpen, onClose, agreement, role }) {
   const handleTenantCounter = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setError('');
     try {
       await rejectDamageClaim(agreement.id, counterAmount, counterReason);
       onClose();
     } catch (err) {
-      console.error(err);
+      setError(err.message || 'Unable to submit the counter-offer.');
     } finally {
       setLoading(false);
     }
@@ -53,11 +57,12 @@ export default function ClaimModal({ isOpen, onClose, agreement, role }) {
 
   const handleLandlordAcceptCounter = async () => {
     setLoading(true);
+    setError('');
     try {
       await acceptCounterOffer(agreement.id);
       onClose();
     } catch (err) {
-      console.error(err);
+      setError(err.message || 'Unable to accept the counter-offer.');
     } finally {
       setLoading(false);
     }
@@ -66,6 +71,11 @@ export default function ClaimModal({ isOpen, onClose, agreement, role }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
       <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl relative overflow-hidden">
+        {error && (
+          <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" /> {error}
+          </div>
+        )}
         
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-6">

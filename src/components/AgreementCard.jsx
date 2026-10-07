@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useWeb3 } from '../context/Web3Context';
-import { USER_FRIENDLY_STATUS } from '../utils/mockData';
+import { USER_FRIENDLY_STATUS } from '../utils/statusData';
 import { shortenHash } from '../utils/hashUtils';
 import EscrowTracker from './EscrowTracker';
 import EvidenceViewer from './EvidenceViewer';
@@ -9,20 +9,22 @@ import ArbitratorPanel from './ArbitratorPanel';
 import { Building2, Coins, Calendar, ShieldCheck, AlertTriangle, ChevronDown, ChevronUp, Eye, Scale, CheckCircle2, Key, ArrowRight, CornerDownRight } from 'lucide-react';
 
 export default function AgreementCard({ agreement }) {
-  const { accountRole, fundDeposit } = useWeb3();
+  const { accountRole, fundDeposit, transactionState } = useWeb3();
   const [showEvidence, setShowEvidence] = useState(false);
   const [showClaimModal, setShowClaimModal] = useState(false);
   const [showArbitratorPanel, setShowArbitratorPanel] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const statusInfo = USER_FRIENDLY_STATUS[agreement.status] || USER_FRIENDLY_STATUS[0];
 
   const handleFund = async () => {
     setLoading(true);
+    setError('');
     try {
       await fundDeposit(agreement.id);
     } catch (err) {
-      console.error(err);
+      setError(err.message || 'Deposit transaction failed.');
     } finally {
       setLoading(false);
     }
@@ -59,6 +61,13 @@ export default function AgreementCard({ agreement }) {
 
       {/* Visual State Machine Progress Bar */}
       <EscrowTracker currentStatus={agreement.status} />
+
+      {error && <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs">{error}</div>}
+      {transactionState.status === 'pending' && transactionState.hash && (
+        <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs">
+          Waiting for transaction confirmation: {shortenHash(transactionState.hash, 8)}
+        </div>
+      )}
 
       {/* Clean Financial Breakdown */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 rounded-2xl bg-slate-950/70 border border-slate-800/80">
@@ -156,7 +165,7 @@ export default function AgreementCard({ agreement }) {
           )}
 
           {/* Optional Dispute Arbitration Court */}
-          {agreement.status === 5 && (
+          {accountRole === 'arbitrator' && agreement.status === 5 && (
             <button
               onClick={() => setShowArbitratorPanel(!showArbitratorPanel)}
               className="px-4 py-2.5 text-xs font-bold rounded-xl bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-600/20 transition flex items-center gap-2"

@@ -3,16 +3,14 @@ import { Web3Provider, useWeb3 } from './context/Web3Context';
 import Navbar from './components/Navbar';
 import AgreementCard from './components/AgreementCard';
 import CreateAgreementModal from './components/CreateAgreementModal';
-import LoginModal from './components/LoginModal';
 import SecurityGuidelinesModal from './components/SecurityGuidelinesModal';
 import MyTenantsDirectory from './components/MyTenantsDirectory';
 import EventLogs from './components/EventLogs';
 import { Building2, ShieldCheck, Scale, AlertTriangle, Coins, Key, UserCheck, Home, ArrowRight, Users, BookOpen } from 'lucide-react';
 
 function DashboardContent() {
-  const { agreements, accountRole, currentUserObj, userAddress } = useWeb3();
+  const { agreements, accountRole, userAddress, defaultArbitrator, appState, transactionState, connectMetaMask, contractAddress } = useWeb3();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isGuidelinesOpen, setIsGuidelinesOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('myRentals'); // 'myRentals' | 'tenantsDir' | 'pendingAction' | 'logs'
 
@@ -22,17 +20,52 @@ function DashboardContent() {
     .reduce((acc, a) => acc + parseFloat(a.depositAmount), 0)
     .toFixed(2);
 
-  // Filter agreements based on active logged-in user address
+  if (appState.status !== 'ready') {
+    const stateDetails = {
+      'metamask-unavailable': ['MetaMask is not installed', 'Install the MetaMask browser extension to connect to RentSecure.'],
+      'wallet-disconnected': ['Connect your wallet', 'Connect MetaMask to continue to the Sepolia DApp.'],
+      'wrong-network': ['Switch to Sepolia', appState.message],
+      'contract-unavailable': ['Contract unavailable', appState.message],
+      'transaction-failed': ['Wallet connection failed', appState.message]
+    };
+    const [title, message] = stateDetails[appState.status] || ['Connecting to RentSecure', appState.message];
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-6">
+        <div className="max-w-lg w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 text-center space-y-5 shadow-2xl">
+          <ShieldCheck className="w-12 h-12 text-emerald-400 mx-auto" />
+          <div>
+            <h1 className="text-2xl font-extrabold text-white">{title}</h1>
+            <p className="text-sm text-slate-400 mt-2">{message}</p>
+          </div>
+          {appState.status === 'wallet-disconnected' && (
+            <button onClick={connectMetaMask} className="px-5 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm">
+              Connect MetaMask
+            </button>
+          )}
+          <div className="text-left text-xs text-slate-500 bg-slate-950/70 border border-slate-800 rounded-xl p-4 space-y-1">
+            <p>Required network: Sepolia (chain ID 11155111)</p>
+            <p>Contract: {contractAddress || 'Not configured'}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Filter agreements using the connected wallet address
   const myAgreements = agreements.filter(a => {
-    if (accountRole === 'landlord') return a.landlord.toLowerCase() === userAddress.toLowerCase();
-    if (accountRole === 'tenant') return a.tenant.toLowerCase() === userAddress.toLowerCase();
-    return true;
+    const address = userAddress.toLowerCase();
+    return a.landlord.toLowerCase() === address
+      || a.tenant.toLowerCase() === address
+      || a.arbitrator.toLowerCase() === address;
   });
 
   const pendingActionAgreements = agreements.filter(a => {
     if (accountRole === 'tenant') return (a.tenant.toLowerCase() === userAddress.toLowerCase()) && (a.status === 0 || a.status === 4);
     if (accountRole === 'landlord') return (a.landlord.toLowerCase() === userAddress.toLowerCase()) && (a.status === 2 || a.status === 3 || a.status === 5);
-    if (accountRole === 'arbitrator') return a.status === 5;
+    if (accountRole === 'arbitrator') return a.status === 5 && (
+      a.arbitrator.toLowerCase() === userAddress.toLowerCase()
+      || defaultArbitrator.toLowerCase() === userAddress.toLowerCase()
+    );
     return false;
   });
 
@@ -44,7 +77,6 @@ function DashboardContent() {
       {/* Top Navbar */}
       <Navbar
         onOpenCreateModal={() => setIsCreateModalOpen(true)}
-        onOpenLoginModal={() => setIsLoginModalOpen(true)}
         onOpenGuidelines={() => setIsGuidelinesOpen(true)}
       />
 
@@ -56,23 +88,21 @@ function DashboardContent() {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
             
             <div className="flex items-center space-x-4">
-              <img
-                src={currentUserObj.avatar}
-                alt={currentUserObj.name}
-                className="w-16 h-16 rounded-full object-cover border-2 border-emerald-500 shadow-xl shrink-0"
-              />
+              <div className="w-16 h-16 rounded-full bg-emerald-500/10 border-2 border-emerald-500 flex items-center justify-center shrink-0">
+              <Key className="w-7 h-7 text-emerald-400" />
+              </div>
               <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-xl sm:text-2xl font-extrabold text-white">
-                    Welcome back, {currentUserObj.name}
-                  </h1>
-                  <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                    {currentUserObj.badge}
-                  </span>
-                </div>
-                <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-xl">
-                  {currentUserObj.roleTitle} • Account Email: <span className="text-slate-300 font-semibold">{currentUserObj.email}</span>
-                </p>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl sm:text-2xl font-extrabold text-white">
+                  Connected wallet
+                </h1>
+                <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  {accountRole}
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-xl">
+                MetaMask account • <span className="text-slate-300 font-mono">{userAddress}</span>
+              </p>
               </div>
             </div>
 
@@ -86,12 +116,15 @@ function DashboardContent() {
                 </div>
               </div>
 
-              <button
-                onClick={() => setIsLoginModalOpen(true)}
-                className="px-4 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-slate-200 transition flex items-center gap-2"
-              >
-                <UserCheck className="w-4 h-4 text-emerald-400" /> Switch Role
-              </button>
+              {transactionState.status !== 'idle' && (
+                <div className={`px-4 py-3 rounded-2xl border text-xs font-bold ${
+                  transactionState.status === 'failed' ? 'border-rose-500/30 bg-rose-500/10 text-rose-300' :
+                  transactionState.status === 'confirmed' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' :
+                  'border-amber-500/30 bg-amber-500/10 text-amber-300'
+                }`}>
+                  {transactionState.message}
+                </div>
+              )}
             </div>
 
           </div>
@@ -161,7 +194,7 @@ function DashboardContent() {
                 <Building2 className="w-12 h-12 text-slate-600 mx-auto" />
                 <h3 className="text-base font-bold text-slate-300">No Rental Contracts Found</h3>
                 <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                  No active rental agreements match your logged-in profile. Click "Create Lease" to start a new smart contract escrow.
+                  No agreements involving this connected wallet were found on Sepolia.
                 </p>
               </div>
             ) : (
@@ -183,11 +216,6 @@ function DashboardContent() {
       <CreateAgreementModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-      />
-
-      <LoginModal
-        isOpen={isLoginModalOpen}
-        onClose={() => setIsLoginModalOpen(false)}
       />
 
       <SecurityGuidelinesModal

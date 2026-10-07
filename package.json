@@ -8,9 +8,12 @@
     "build": "vite build",
     "preview": "vite preview",
     "compile": "hardhat compile",
-    "test": "hardhat test"
+    "test": "hardhat test",
+    "deploy:local": "hardhat run scripts/deploy.cjs --network hardhat",
+    "deploy:sepolia": "hardhat run scripts/deploy.cjs --network sepolia"
   },
   "dependencies": {
+    "dotenv": "^18.0.6",
     "ethers": "^6.13.2",
     "lucide-react": "^0.439.0",
     "react": "^18.3.1",

@@ -18,9 +18,9 @@ BlockEscrow is a decentralized Web3 application (DApp) that replaces traditional
 4. **Arbitrator / Admin Court Dashboard**:
    - Arbitrator inspects side-by-side evidence hashes and photo records.
    - Arbitrator sets final payout distribution, automatically releasing funds.
-5. **Multi-Role Simulator & MetaMask Support**:
-   - Easily swap active roles (Landlord, Tenant, Arbitrator) in one click for quick testing/demoing.
-   - Connect live MetaMask wallets via ethers.js v6.
+5. **MetaMask + Sepolia access**:
+   - Connect a real MetaMask wallet on Sepolia.
+   - Permissions are derived from landlord, tenant, and arbitrator addresses stored in the contract.
 
 ---
 
@@ -28,7 +28,12 @@ BlockEscrow is a decentralized Web3 application (DApp) that replaces traditional
 
 ### 1. Project Directory
 ```bash
-cd C:\Users\admin\.gemini\antigravity\scratch\rental-escrow-dapp
+cd rental-deposit-escrow-system-blcn
+```
+
+Install dependencies first:
+```bash
+npm install
 ```
 
 ### 2. Run Hardhat Smart Contract Unit Tests
@@ -45,6 +50,28 @@ npm run dev
 ```bash
 npm run build
 ```
+
+## Live-only Sepolia setup
+
+This application does not use demo accounts, localStorage, simulated agreements, or fake
+transaction hashes. MetaMask, Sepolia, and the deployed contract are required.
+
+To configure the live application:
+
+1. Copy `.env.example` to `.env`.
+2. Deploy the contract to Sepolia:
+   ```bash
+   npm run deploy:sepolia
+   ```
+3. Set `VITE_ESCROW_CONTRACT_ADDRESS` to the deployed address.
+4. Restart Vite and connect MetaMask to Sepolia.
+
+The frontend discovers agreements from `AgreementCreated` events and reads their current
+state from the deployed contract. All actions require MetaMask confirmation and use real
+Sepolia transaction hashes.
+
+Use separate Sepolia test wallets for the landlord, tenant, and arbitrator roles. Never
+commit `.env` or use a wallet containing real funds.
 
 ---
 
