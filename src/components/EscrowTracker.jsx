@@ -1,5 +1,5 @@
 import React from 'react';
-import { USER_FRIENDLY_STATUS } from '../utils/mockData';
+import { USER_FRIENDLY_STATUS } from '../utils/statusData';
 import { CheckCircle2, Clock, Home, Key, ShieldCheck, Scale, CheckCheck } from 'lucide-react';
 
 const STEPS = [

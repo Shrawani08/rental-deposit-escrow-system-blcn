@@ -1,33 +1,32 @@
 import React, { useState } from 'react';
 import { useWeb3 } from '../context/Web3Context';
-import { X, Building2, Coins, Calendar, UserCheck, ShieldCheck, User } from 'lucide-react';
+import { X, Building2, Coins, Calendar, UserCheck, ShieldCheck, User, AlertCircle } from 'lucide-react';
 
 export default function CreateAgreementModal({ isOpen, onClose }) {
-  const { createAgreement, usersList } = useWeb3();
-
-  const availableTenants = usersList.filter(u => u.role === 'tenant');
-  const availableArbitrators = usersList.filter(u => u.role === 'arbitrator');
+  const { createAgreement } = useWeb3();
 
   const [formData, setFormData] = useState({
     propertyAddress: 'Apartment 501, Horizon Towers, Whitefield',
-    tenantAddress: availableTenants[0]?.address || '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
-    arbitratorAddress: availableArbitrators[0]?.address || '0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc',
+    tenantAddress: '',
+    arbitratorAddress: '',
     depositAmount: '1.5',
     monthlyRent: '0.4',
     durationDays: '365'
   });
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setError('');
     try {
       await createAgreement(formData);
       onClose();
     } catch (err) {
-      console.error(err);
+      setError(err.message || 'Unable to create the lease agreement.');
     } finally {
       setLoading(false);
     }
@@ -54,6 +53,11 @@ export default function CreateAgreementModal({ isOpen, onClose }) {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {error && (
+            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" /> {error}
+            </div>
+          )}
           
           {/* Property Address */}
           <div>
@@ -70,22 +74,19 @@ export default function CreateAgreementModal({ isOpen, onClose }) {
             />
           </div>
 
-          {/* Tenant Select Dropdown */}
+          {/* Tenant wallet */}
           <div>
             <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
               Select Tenant / Renter
             </label>
-            <select
+            <input
+              type="text"
+              required
               value={formData.tenantAddress}
               onChange={(e) => setFormData({ ...formData, tenantAddress: e.target.value })}
               className="w-full bg-slate-800/80 border border-slate-700/80 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 transition"
-            >
-              {availableTenants.map(t => (
-                <option key={t.id} value={t.address}>
-                  {t.name} ({t.email}) — {t.address.slice(0, 6)}...{t.address.slice(-4)}
-                </option>
-              ))}
-            </select>
+              placeholder="0x... tenant MetaMask address"
+            />
           </div>
 
           {/* Arbitrator Address */}
@@ -93,17 +94,13 @@ export default function CreateAgreementModal({ isOpen, onClose }) {
             <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
               Designated Arbitrator / Dispute Officer
             </label>
-            <select
+            <input
+              type="text"
               value={formData.arbitratorAddress}
               onChange={(e) => setFormData({ ...formData, arbitratorAddress: e.target.value })}
               className="w-full bg-slate-800/80 border border-slate-700/80 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 transition"
-            >
-              {availableArbitrators.map(a => (
-                <option key={a.id} value={a.address}>
-                  {a.name} ({a.roleTitle})
-                </option>
-              ))}
-            </select>
+              placeholder="Optional arbitrator MetaMask address"
+            />
           </div>
 
           {/* Deposit & Rent Inputs */}
