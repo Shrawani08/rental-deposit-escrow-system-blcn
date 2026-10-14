@@ -28,6 +28,26 @@ export async function computeFileHash(file) {
 }
 
 /**
+ * Creates a browser-session image preview without uploading the file.
+ * @param {File} file
+ * @returns {Promise<string>} Data URL suitable for an image src
+ */
+export function readFilePreview(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result !== 'string' || !reader.result) {
+        reject(new Error('Unable to create an image preview.'));
+        return;
+      }
+      resolve(reader.result);
+    };
+    reader.onerror = () => reject(reader.error || new Error('Unable to read image file.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
  * Truncates an Ethereum address or Hash for clean UI display
  */
 export function shortenHash(hash, chars = 6) {

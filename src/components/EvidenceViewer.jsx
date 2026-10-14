@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useWeb3 } from '../context/Web3Context';
-import { computeFileHash } from '../utils/hashUtils';
+import { computeFileHash, readFilePreview } from '../utils/hashUtils';
 import { ShieldCheck, Upload, CheckCircle2, AlertCircle, X } from 'lucide-react';
 
 function EvidenceList({ photos, emptyText }) {
@@ -28,8 +28,6 @@ export default function EvidenceViewer({ agreement }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => () => photos.forEach(photo => URL.revokeObjectURL(photo.url)), [photos]);
-
   const handleFiles = async event => {
     setError('');
     const files = [...event.target.files];
@@ -40,7 +38,7 @@ export default function EvidenceViewer({ agreement }) {
         type: file.type,
         size: file.size,
         hash: await computeFileHash(file),
-        url: URL.createObjectURL(file)
+        url: await readFilePreview(file)
       })));
       setPhotos(previous => [...previous, ...selected]);
     } catch {

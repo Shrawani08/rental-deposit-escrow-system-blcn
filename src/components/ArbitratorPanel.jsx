@@ -1,22 +1,34 @@
 import React, { useState } from 'react';
+import { ethers } from 'ethers';
 import { useWeb3 } from '../context/Web3Context';
-import { Scale, ShieldAlert, CheckCircle2, FileText, ArrowRight } from 'lucide-react';
+import { Scale, FileText } from 'lucide-react';
 import EvidenceViewer from './EvidenceViewer';
 
+const PAYOUT_SLIDER_STEPS = 10000n;
+
+function formatWei(wei) {
+  const [whole, fraction] = ethers.formatEther(wei).split('.');
+  const trimmedFraction = fraction?.replace(/0+$/, '');
+  return trimmedFraction ? `${whole}.${trimmedFraction}` : whole;
+}
+
 export default function ArbitratorPanel({ agreement }) {
-  const { resolveDispute, userAddress } = useWeb3();
-  const depositNum = parseFloat(agreement.depositAmount || "1.0");
-  
-  const [tenantPayout, setTenantPayout] = useState(
-    ((depositNum - parseFloat(agreement.claimAmount || "0")) + (depositNum - parseFloat(agreement.counterAmount || "0"))) / 2
-  );
+  const { resolveDispute, transactionState } = useWeb3();
+  const depositWei = ethers.parseEther(agreement.depositAmount || '0');
+  const [tenantPayoutPercent, setTenantPayoutPercent] = useState(5000);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
-  const landlordPayout = (depositNum - tenantPayout).toFixed(4);
+  const tenantPayoutWei = depositWei * BigInt(tenantPayoutPercent) / PAYOUT_SLIDER_STEPS;
+  const landlordPayoutWei = depositWei - tenantPayoutWei;
+  const payoutIsValid = tenantPayoutWei >= 0n
+    && landlordPayoutWei >= 0n
+    && tenantPayoutWei + landlordPayoutWei === depositWei;
+  const tenantPayout = formatWei(tenantPayoutWei);
+  const landlordPayout = formatWei(landlordPayoutWei);
+  const deposit = formatWei(depositWei);
 
   const handleResolve = async () => {
-    if (parseFloat(tenantPayout) + parseFloat(landlordPayout) !== depositNum) {
+    if (!payoutIsValid) {
       setError('Sum of tenant and landlord payouts must equal the total deposit.');
       return;
     }
@@ -24,7 +36,7 @@ export default function ArbitratorPanel({ agreement }) {
     setLoading(true);
     setError('');
     try {
-      await resolveDispute(agreement.id, tenantPayout, landlordPayout);
+      await resolveDispute(agreement.id, tenantPayoutWei, landlordPayoutWei);
     } catch (err) {
       setError(err.message || 'Dispute resolution failed.');
     } finally {
@@ -34,7 +46,7 @@ export default function ArbitratorPanel({ agreement }) {
 
   return (
     <div className="bg-slate-900 border border-purple-500/30 rounded-3xl p-6 shadow-2xl space-y-6">
-      
+
       {/* Header */}
       <div className="flex items-center justify-between border-b border-purple-500/20 pb-4">
         <div className="flex items-center space-x-3">
@@ -56,7 +68,7 @@ export default function ArbitratorPanel({ agreement }) {
       {/* Claims vs Counter Box */}
       {error && <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs">{error}</div>}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        
+
         {/* Landlord Demand */}
         <div className="p-4 bg-slate-800/60 rounded-2xl border border-slate-700/80">
           <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Landlord Claim Demand</span>
@@ -79,7 +91,7 @@ export default function ArbitratorPanel({ agreement }) {
       {/* Settlement Slider & Controls */}
       <div className="bg-slate-800/80 p-5 rounded-2xl border border-purple-500/20 space-y-4">
         <h4 className="text-sm font-bold text-white flex items-center gap-2">
-          <FileText className="w-4 h-4 text-purple-400" /> Arbitrator Verdict Breakdown (Escrow Total: {agreement.depositAmount} ETH)
+          <FileText className="w-4 h-4 text-purple-400" /> Arbitrator Verdict Breakdown (Escrow Total: {deposit} ETH)
         </h4>
 
         {/* Range Slider */}
@@ -91,22 +103,28 @@ export default function ArbitratorPanel({ agreement }) {
           <input
             type="range"
             min="0"
-            max={depositNum}
-            step="0.01"
-            value={tenantPayout}
-            onChange={(e) => setTenantPayout(parseFloat(e.target.value))}
+            max={Number(PAYOUT_SLIDER_STEPS)}
+            step="1"
+            value={tenantPayoutPercent}
+            onChange={event => setTenantPayoutPercent(Number(event.target.value))}
             className="w-full accent-purple-500 bg-slate-700 h-2 rounded-lg cursor-pointer"
           />
+          <p className="text-xs text-slate-300">
+            {tenantPayout} ETH + {landlordPayout} ETH = {deposit} ETH
+          </p>
+          {!payoutIsValid && (
+            <p className="text-xs text-rose-300">Tenant and landlord payouts must equal the escrow deposit.</p>
+          )}
         </div>
 
         {/* Action Button */}
         <button
           onClick={handleResolve}
-          disabled={loading}
+          disabled={loading || transactionState.status === 'pending' || !payoutIsValid}
           className="w-full py-3 px-4 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-purple-600/30 transition flex items-center justify-center gap-2"
         >
           <Scale className="w-4 h-4" />
-          {loading ? "Executing Binding Verdict..." : `Execute Binding Verdict on Smart Contract (${tenantPayout} ETH Tenant / ${landlordPayout} ETH Landlord)`}
+          {loading || transactionState.status === 'pending' ? "Executing Binding Verdict..." : `Execute Binding Verdict on Smart Contract (${tenantPayout} ETH Tenant / ${landlordPayout} ETH Landlord)`}
         </button>
       </div>
 

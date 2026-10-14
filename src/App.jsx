@@ -6,7 +6,7 @@ import CreateAgreementModal from './components/CreateAgreementModal';
 import SecurityGuidelinesModal from './components/SecurityGuidelinesModal';
 import MyTenantsDirectory from './components/MyTenantsDirectory';
 import EventLogs from './components/EventLogs';
-import { Building2, ShieldCheck, Scale, AlertTriangle, Coins, Key, UserCheck, Home, ArrowRight, Users, BookOpen } from 'lucide-react';
+import { Building2, ShieldCheck, Scale, AlertTriangle, Coins, Key, UserCheck, Home, ArrowRight, Users } from 'lucide-react';
 
 function DashboardContent() {
   const { agreements, accountRole, userAddress, defaultArbitrator, appState, transactionState, connectMetaMask, contractAddress } = useWeb3();
@@ -172,13 +172,6 @@ function DashboardContent() {
               <ShieldCheck className="w-4 h-4 text-emerald-400" /> Blockchain Event Stream
             </button>
           </div>
-
-          <button
-            onClick={() => setIsGuidelinesOpen(true)}
-            className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 font-semibold text-xs rounded-xl transition flex items-center justify-center gap-2"
-          >
-            <BookOpen className="w-4 h-4 text-emerald-400" /> RentSecure Guidelines
-          </button>
 
         </div>
 

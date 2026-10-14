@@ -204,13 +204,18 @@ export function Web3Provider({ children }) {
   };
 
   const rememberEvidence = (agreementId, stage, photos) => {
+    const evidence = {
+      ...(sessionEvidence[agreementId] || {}),
+      [stage === 'moveIn' ? 'moveInPhotos' : 'moveOutPhotos']: photos
+    };
     setSessionEvidence(previous => ({
       ...previous,
-      [agreementId]: {
-        ...previous[agreementId],
-        [stage === 'moveIn' ? 'moveInPhotos' : 'moveOutPhotos']: photos
-      }
+      [agreementId]: evidence
     }));
+    setAgreements(previous => previous.map(agreement => agreement.id === agreementId
+      ? { ...agreement, ...evidence }
+      : agreement
+    ));
   };
 
   const createAgreement = async ({ tenantAddress, arbitratorAddress, depositAmount, monthlyRent, durationDays, propertyAddress }) => {
@@ -287,11 +292,19 @@ export function Web3Provider({ children }) {
 
   const resolveDispute = async (id, tenantPayout, landlordPayout) => {
     const agreement = agreements.find(item => item.id === id);
-    if (!agreement || Number(tenantPayout) + Number(landlordPayout) !== Number(agreement.depositAmount)) {
+    const depositWei = agreement ? ethers.parseEther(agreement.depositAmount) : 0n;
+    if (
+      !agreement
+      || typeof tenantPayout !== 'bigint'
+      || typeof landlordPayout !== 'bigint'
+      || tenantPayout < 0n
+      || landlordPayout < 0n
+      || tenantPayout + landlordPayout !== depositWei
+    ) {
       throw new Error('Tenant and landlord payouts must equal the full security deposit.');
     }
     return runTransaction('Dispute resolution', () => getContract(true).then(contract => contract.resolveDispute(
-      id, ethers.parseEther(String(tenantPayout)), ethers.parseEther(String(landlordPayout))
+      id, tenantPayout, landlordPayout
     )), id);
   };
 
